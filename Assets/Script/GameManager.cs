@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System; // for Action<>
 
 public enum GameState { Ready, Running, GameOver }
 
@@ -22,12 +23,16 @@ public class GameManager : MonoBehaviour
     float bestScore;
     float lastScore;
 
+    public static bool IsPaused { get; private set; }
+    public static event Action<bool> OnPauseStateChanged;
+
     void Awake()
     {
         if (Instance && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         Application.targetFrameRate = 60;
         Time.timeScale = 1f;
+        IsPaused = false; // reset any leftover pause state on scene reload
 
         bestScore = PlayerPrefs.GetFloat("BEST_SCORE", 0);
     }
@@ -61,23 +66,31 @@ public class GameManager : MonoBehaviour
     {
         if (State == GameState.GameOver) return;
         State = GameState.GameOver;
+        IsPaused = true; // treat GameOver as paused for input systems
+        OnPauseStateChanged?.Invoke(true);
 
         // Panelde son koşu ve best'i göster
         UIHud.Instance?.ShowGameOver(true, lastScore, bestScore);
 
         PlayerPrefs.SetFloat("BEST_SCORE", bestScore);
+        PlayerPrefs.Save();
         Time.timeScale = 0f;
     }
 
     public void Retry()
     {
+        IsPaused = false;
         Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     public void Pause(bool pause)
     {
+        // Only allow pausing/resuming during active gameplay
         if (State != GameState.Running) return;
+
+        IsPaused = pause;
         Time.timeScale = pause ? 0f : 1f;
+        OnPauseStateChanged?.Invoke(pause);
     }
 }
