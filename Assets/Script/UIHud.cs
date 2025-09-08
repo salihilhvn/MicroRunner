@@ -12,8 +12,8 @@ public class UIHud : MonoBehaviour
 
     [Header("Game Over Panel")]
     [SerializeField] GameObject gameOverPanel;
-    [SerializeField] TextMeshProUGUI finalScoreText;
-    [SerializeField] TextMeshProUGUI finalBestText;
+    [SerializeField] TextMeshProUGUI finalScoreText;  // kutu içi SCORE değeri (sadece "X m")
+    [SerializeField] TextMeshProUGUI finalBestText;   // kutu içi BEST değeri  (sadece "Y m")
 
     [Header("Buttons")]
     [SerializeField] Button retryButton;
@@ -24,12 +24,13 @@ public class UIHud : MonoBehaviour
     void Awake()
     {
         Instance = this;
+
         if (gameOverPanel) gameOverPanel.SetActive(false);
         if (retryButton)  retryButton.gameObject.SetActive(false);
         if (resumeButton) resumeButton.gameObject.SetActive(false);
         if (pauseButton)  pauseButton.gameObject.SetActive(true);
 
-        // Ensure Pause button is ALWAYS visible in gameplay: if it's under the GameOver panel, re-parent it to the panel's parent
+        // Pause butonu GameOver panelinin altında kalmasın
         if (pauseButton && gameOverPanel)
         {
             if (pauseButton.transform.IsChildOf(gameOverPanel.transform))
@@ -37,19 +38,23 @@ public class UIHud : MonoBehaviour
                 var pauseRT = pauseButton.GetComponent<RectTransform>();
                 var panelParent = gameOverPanel.transform.parent as RectTransform;
                 if (pauseRT != null && panelParent != null)
-                {
-                    // Re-parent without keeping world pos so it preserves local anchors nicely
                     pauseRT.SetParent(panelParent, false);
-                }
             }
         }
 
-        // Auto-find pause label if not assigned
         if (!pauseLabel && pauseButton)
             pauseLabel = pauseButton.GetComponentInChildren<TextMeshProUGUI>(true);
         if (pauseLabel) pauseLabel.text = "Pause";
     }
+    void Start()
+    {
+        // All-time göstereceksen:
+        // bestText.text = $"{GameManager.Instance?.BestScore ?? 0f:0} m";
+        // Session-best için:
+        bestText.text = "0 m";
+    }
 
+    // Canlı skor/best (üstteki kutular)
     public void SetScore(float meters)
     {
         if (scoreText) scoreText.text = $"{meters:0} m";
@@ -57,18 +62,23 @@ public class UIHud : MonoBehaviour
 
     public void SetBest(float meters)
     {
-        if (bestText) bestText.text = $"BEST: {meters:0} m";
+        // Üstteki BEST kutusunun içine sadece "Y m" yazıyoruz
+        bestText.text = $"{(GameManager.Instance ? GameManager.Instance.BestScore : 0f):0} m";
     }
 
-    // Paneli aç ve final değerleri yaz
+    // Game Over: kutuların içine SADECE "X m" / "Y m" yaz
     public void ShowGameOver(bool show, float lastRunMeters = 0f, float bestMeters = 0f)
     {
         if (!gameOverPanel) return;
+
         gameOverPanel.SetActive(show);
+
         if (show)
         {
-            if (finalScoreText) finalScoreText.text = $"SCORE: {lastRunMeters:0} m";
-            if (finalBestText)  finalBestText.text  = $"BEST:  {bestMeters:0} m";
+            // final kutular – ön ek yok, sadece değer + " m"
+            if (finalScoreText) finalScoreText.text = $"{lastRunMeters:0} m";
+            if (finalBestText)  finalBestText.text  = $"{bestMeters:0} m";
+
             if (retryButton)  retryButton.gameObject.SetActive(true);
             if (resumeButton) resumeButton.gameObject.SetActive(false);
             if (pauseButton)  pauseButton.gameObject.SetActive(false);
@@ -77,52 +87,47 @@ public class UIHud : MonoBehaviour
         {
             if (retryButton)  retryButton.gameObject.SetActive(false);
             if (resumeButton) resumeButton.gameObject.SetActive(false);
-            // pauseButton remains as-is (always visible)
             if (pauseButton)  pauseButton.gameObject.SetActive(true);
         }
     }
 
-    // UI Button Events
+    // === UI Button Events ===
     public void OnRetry()  => GameManager.Instance.Retry();
+
     public void OnPause()
     {
         if (GameManager.Instance == null) return;
-        if (GameManager.Instance.State == GameState.GameOver)
-        {
-            Debug.Log("[UIHud] OnPause ignored — GameOver state");
-            return;
-        }
+        if (GameManager.Instance.State == GameState.GameOver) return;
 
-        bool willPause = !GameManager.IsPaused; // toggle pause
-        GameManager.Instance.Pause(willPause);  // updates flag, timeScale, and raises event
-
+        bool willPause = !GameManager.IsPaused;
+        GameManager.Instance.Pause(willPause);
         if (pauseLabel) pauseLabel.text = willPause ? "Resume" : "Pause";
 
         if (!willPause)
         {
-            // resuming gameplay
             if (gameOverPanel) gameOverPanel.SetActive(false);
             if (retryButton)  retryButton.gameObject.SetActive(false);
             if (resumeButton) resumeButton.gameObject.SetActive(false);
         }
-
-        Debug.Log(willPause ? "[UIHud] Paused" : "[UIHud] Resumed");
     }
+
     public void OnResume()
     {
         if (GameManager.Instance == null) return;
+        if (GameManager.Instance.State == GameState.GameOver) return;
 
-        if (GameManager.Instance.State == GameState.GameOver)
-        {
-            Debug.Log("[UIHud] Resume ignored — GameOver state");
-            return;
-        }
-
-        GameManager.Instance.Pause(false); // force resume
+        GameManager.Instance.Pause(false);
         if (pauseLabel) pauseLabel.text = "Pause";
         if (gameOverPanel) gameOverPanel.SetActive(false);
         if (retryButton)  retryButton.gameObject.SetActive(false);
         if (resumeButton) resumeButton.gameObject.SetActive(false);
-        Debug.Log("[UIHud] Resumed");
     }
+
+    // === BEST temizleme (hızlı çözüm) ===
+    // Bunu bir butonun OnClick'ine bağlayabilirsin.
+    public void OnClearBest()
+    {
+        GameManager.Instance?.ResetBestScore();
+    }
+
 }
