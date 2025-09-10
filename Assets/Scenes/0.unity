@@ -1976,7 +1976,7 @@ GameObject:
   - component: {fileID: 1283289304}
   - component: {fileID: 1283289303}
   - component: {fileID: 1283289302}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Ground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2094,12 +2094,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Runner
   laneX: 5
   laneChangeSpeed: 30
-  gravity: 2
+  gravity: 24
   forwardSpeed: 10
+  jumpHeight: 1.1
+  coyoteTime: 0.1
+  jumpBuffer: 0.1
+  jumpImpulseMult: 1
+  riseGravityMult: 0.5
+  fallGravityMult: 1
+  maxAirTime: 0.3
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 8
+  snapCheckDistance: 0.35
   anim: {fileID: 1386899711}
   runParam: IsRunning
   maxLeanDegrees: 12
   leanSpeed: 12
+  groundedParam: IsGrounded
+  verticalSpeedParam: VerticalSpeed
+  jumpTrigger: Jump
+  landTrigger: Land
   currentLaneIndex: 1
 --- !u!143 &1386899706
 CharacterController:
